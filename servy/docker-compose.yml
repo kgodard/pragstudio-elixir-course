@@ -1,0 +1,6 @@
+version: '2.2'
+services:
+  app:
+    image: elixir:1.5-slim
+    volumes:
+      - .:/servy
