@@ -4,3 +4,6 @@ services:
     image: elixir:1.5-slim
     volumes:
       - .:/servy
+      - elixir-mix:/root/.mix
+volumes:
+  elixir-mix:

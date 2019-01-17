@@ -6,7 +6,7 @@ defmodule Servy.Handler do
 
   import Servy.Plugins, only: [rewrite_path: 1, log: 1, track: 1]
   import Servy.Parser, only: [parse: 1]
-  import Servy.FileHandler, only: [handle_file: 2]
+  import Servy.FileHandler, only: [handle_file: 2, handle_markdown: 2]
 
   alias Servy.Conv
   alias Servy.BearController
@@ -19,6 +19,7 @@ defmodule Servy.Handler do
     |> log
     |> route
     |> track
+    |> put_content_length
     |> format_response
   end
 
@@ -33,6 +34,14 @@ defmodule Servy.Handler do
 
   def route(%Conv{ method: "GET", path: "/bears" } = conv) do
     BearController.index(conv)
+  end
+
+  def route(%Conv{ method: "GET", path: "/api/bears" } = conv) do
+    Servy.Api.BearController.index(conv)
+  end
+
+  def route(%Conv{ method: "POST", path: "/api/bears" } = conv) do
+    Servy.Api.BearController.create(conv, conv.params)
   end
 
   def route(%Conv{ method: "GET", path: "/bears/new" } = conv) do
@@ -52,6 +61,13 @@ defmodule Servy.Handler do
     BearController.delete(conv, params)
   end
 
+  def route(%Conv{ method: "GET", path: "/faq" } = conv) do
+    @pages_path
+    |> Path.join("faq.md")
+    |> File.read
+    |> handle_markdown(conv)
+  end
+
   def route(%Conv{ method: "GET", path: "/" <> file } = conv) do
     @pages_path
     |> Path.join(file <> ".html")
@@ -66,10 +82,20 @@ defmodule Servy.Handler do
   def format_response(%Conv{} = conv) do
     """
     HTTP/1.1 #{Conv.full_status(conv)}\r
-    Content-Type: text/html\r
-    Content-Length: #{String.length(conv.resp_body)}\r
+    #{format_response_headers(conv)}
     \r
     #{conv.resp_body}
     """
+  end
+
+  defp format_response_headers(conv) do
+    for {key, value} <- conv.resp_headers do
+      "#{key}: #{value}\r"
+    end |> Enum.sort |> Enum.reverse |> Enum.join("\n")
+  end
+
+  defp put_content_length(conv) do
+    headers = Map.put(conv.resp_headers, "Content-Length", String.length(conv.resp_body))
+    %{ conv | resp_headers: headers }
   end
 end
