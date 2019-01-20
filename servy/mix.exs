@@ -22,7 +22,8 @@ defmodule Servy.Mixfile do
   defp deps do
     [
       {:poison, "~> 3.1"},
-      {:earmark, "~> 1.3"}
+      {:earmark, "~> 1.3"},
+      {:httpoison, "~> 0.12.0"}
     ]
   end
 end

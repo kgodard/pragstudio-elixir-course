@@ -1,7 +1,8 @@
 version: '2.2'
 services:
   app:
-    image: elixir:1.5-slim
+    build:
+      context: .
     ports:
       - "4000:4000"
     volumes:
