@@ -4,7 +4,7 @@ defmodule Servy.Handler do
 
   @pages_path Path.expand("pages", File.cwd!)
 
-  import Servy.Plugins, only: [rewrite_path: 1, log: 1, track: 1]
+  import Servy.Plugins, only: [rewrite_path: 1, track: 1]
   import Servy.Parser, only: [parse: 1]
   import Servy.FileHandler, only: [handle_file: 2, handle_markdown: 2]
   import Servy.View, only: [render: 3]
@@ -12,6 +12,8 @@ defmodule Servy.Handler do
   alias Servy.Conv
   alias Servy.BearController
   alias Servy.VideoCam
+  alias Servy.PledgeController
+  alias Servy.FourOhFourCounter, as: Counter
 
   @doc "transforms request into a response"
   def handle(request) do
@@ -23,6 +25,23 @@ defmodule Servy.Handler do
     |> track
     |> put_content_length
     |> format_response
+  end
+
+  def route(%Conv{ method: "GET", path: "/404s" } = conv) do
+    counts = Counter.get_counts()
+    %{ conv | status: 200, resp_body: inspect(counts) <> "\n" }
+  end
+
+  def route(%Conv{ method: "POST", path: "/pledges" } = conv) do
+    PledgeController.create(conv, conv.params)
+  end
+
+  def route(%Conv{ method: "GET", path: "/pledges" } = conv) do
+    PledgeController.index(conv)
+  end
+
+  def route(%Conv{ method: "GET", path: "/pledges/new" } = conv) do
+    PledgeController.new(conv)
   end
 
   def route(%Conv{ method: "GET", path: "/sensors" } = conv) do

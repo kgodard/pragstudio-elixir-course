@@ -2,13 +2,17 @@ defmodule Servy.Plugins do
 
   @moduledoc "Plugins for Servy HTTP server"
 
-  require Logger
+  # require Logger
+
+  alias Servy.FourOhFourCounter, as: Counter
 
   alias Servy.Conv
 
   def track(%Conv{status: 404, path: path} = conv) do
     if Mix.env != :test do
-      Logger.warn "Warning: #{path} is on the loose!"
+      # Logger.warn "Warning: #{path} is on the loose!"
+      Counter.bump_count(path)
+      IO.puts "Warning: #{path} is on the loose!"
     end
     conv
   end
