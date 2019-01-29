@@ -1,48 +1,84 @@
-defmodule Servy.FourOhFourCounter do
+defmodule Servy.Gserver do
 
-  @name __MODULE__
-
-  def start do
-    IO.puts "Starting 404 Counter..."
-    pid = spawn(@name, :listen_loop, [%{}])
-    Process.register(pid, @name)
+  def start(callback_module, initial_state, name) do
+    pid = spawn(__MODULE__, :listen_loop, [initial_state, callback_module])
+    Process.register(pid, name)
     pid
   end
 
-  def bump_count(path) do
-    send @name, {self(), :bump_count, path}
+  def call(pid, message) do
+    send pid, {:call, self(), message}
 
-    receive do {:response, path_count} -> path_count end
+    receive do {:response, response} -> response end
+  end
+
+  def cast(pid, message) do
+    send pid, {:cast, message}
+  end
+
+  def listen_loop(state, callback_module) do
+    receive do
+      {:call, sender, message} when is_pid(sender) ->
+        {response, new_state} = callback_module.handle_call(message, state)
+        send sender, {:response, response}
+        listen_loop(new_state, callback_module)
+      {:cast, message} ->
+        new_state = callback_module.handle_cast(message, state)
+        listen_loop(new_state, callback_module)
+      unexpected ->
+        IO.puts "Unexpected message: #{inspect(unexpected)}"
+        listen_loop(state, callback_module)
+    end
+  end
+
+end
+
+defmodule Servy.FourOhFourCounter do
+
+  @name :fourohfourcounter
+
+  alias Servy.Gserver
+
+  def start do
+    IO.puts "Starting 404 Counter..."
+    Gserver.start(__MODULE__, %{}, @name)
+  end
+
+  def bump_count(path) do
+    Gserver.call @name, {:bump_count, path}
   end
 
   def get_count(path) do
-    send @name, {self(), :get_count, path}
-
-    receive do {:response, path_count} -> path_count end
+    Gserver.call @name, {:get_count, path}
   end
 
   def get_counts do
-    send @name, {self(), :get_counts}
-
-    receive do {:response, counts} -> counts end
+    Gserver.call @name, :get_counts
   end
 
-  # Server
-  def listen_loop(state) do
+  def reset do
+    Gserver.cast @name, :reset
+  end
 
-    receive do
-      {sender, :bump_count, path} ->
-        new_state = add_or_increment_key(state, path)
-        send sender, {:response, Map.get(new_state, path)}
-        listen_loop(new_state)
-      {sender, :get_count, path} ->
-        send sender, {:response, Map.get(state, path)}
-        listen_loop(state)
-      {sender, :get_counts} ->
-        send sender, {:response, state}
-        listen_loop(state)
-    end
+  # Server Callbacks
 
+  def handle_cast(:reset, _state) do
+    %{}
+  end
+
+  def handle_call({:bump_count, path}, state) do
+    new_state = add_or_increment_key(state, path)
+    count = Map.get(new_state, path)
+    {count, new_state}
+  end
+
+  def handle_call({:get_count, path}, state) do
+    count = Map.get(state, path)
+    {count, state}
+  end
+
+  def handle_call(:get_counts, state) do
+    {state, state}
   end
 
   defp add_or_increment_key(state_map, key) do
