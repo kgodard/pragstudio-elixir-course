@@ -8,6 +8,6 @@ defmodule Servy.VideoCam do
     # Sleep for 1 second to simulate that the API can be slow:
     :timer.sleep(1000)
     # Example response returned from the API:
-    "#{camera_name}-snapshot.jpg"
+    "#{camera_name}-snapshot-#{:rand.uniform(1000)}.jpg"
   end
 end
